@@ -7,6 +7,7 @@ from pathlib import Path
 import torch
 from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig
+from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
@@ -44,39 +45,75 @@ def predict(
     
     with initialize_config_dir(version_base=None, config_dir=str(config_dir.absolute())):
         cfg = compose(config_name="config")
-    model_path = checkpoint if checkpoint else str(project_root / cfg.training.output_dir / "final")
-
-    print(f"Loading model from: {model_path}")
-    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_path, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
+    
+    # Determine model path
+    if checkpoint:
+        adapter_path = checkpoint
+    else:
+        adapter_path = str(project_root / cfg.training.output_dir / "final")
+    
+    print(f"Loading base model: {cfg.model.name}")
+    tokenizer = AutoTokenizer.from_pretrained(cfg.model.name, trust_remote_code=True)
+    
+    base_model = AutoModelForCausalLM.from_pretrained(
+        cfg.model.name,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        trust_remote_code=True,
     )
+    
+    print(f"Loading LoRA adapter from: {adapter_path}")
+    model = PeftModel.from_pretrained(base_model, adapter_path)
     model.eval()
 
     if text:
         texts = [text]
     elif input_file:
-        with open(input_file, "r", encoding="utf-8") as f:
-            texts = [line.strip() for line in f if line.strip()]
+        input_path = Path(input_file)
+        if input_path.suffix == ".json":
+            # Load JSON file (list of texts or list of dicts with 'text' field)
+            with open(input_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    if data and isinstance(data[0], dict):
+                        texts = [item.get("text", item.get("comment_text", "")) for item in data]
+                    else:
+                        texts = data
+                else:
+                    texts = [data]
+        else:
+            # Load text file (one text per line)
+            with open(input_path, "r", encoding="utf-8") as f:
+                texts = [line.strip() for line in f if line.strip()]
+        print(f"Loaded {len(texts)} texts from {input_file}")
     else:
-        print("Error: Provide either text or input_file")
+        print("Error: Provide either --text or --input_file")
         return
 
     results = []
     for txt in texts:
-        prompt = f"Проанализируй сообщение и определи токсичность.\n\nСообщение: {txt}\n\nОтвет: "
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512).to(model.device)
+        # Use the same prompt format as training
+        prompt = f"Human: {txt}\nAssistant:"
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=cfg.model.max_length).to(model.device)
 
         with torch.no_grad():
-            outputs = model.generate(**inputs, max_new_tokens=256, temperature=0.7, top_p=0.9, do_sample=True)
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=100,
+                temperature=cfg.model.temperature,
+                top_p=cfg.model.top_p,
+                do_sample=True,
+                pad_token_id=tokenizer.eos_token_id,
+            )
 
-        response = tokenizer.decode(outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True)
+        response = tokenizer.decode(outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
         prediction = parse_response(response)
 
-        results.append({"text": txt, "toxic": prediction["toxic"], "labels": prediction["labels"]})
+        results.append({"text": txt, "toxic": prediction["toxic"], "labels": prediction["labels"], "response": response})
 
         if not output_file:
             print(f"\nText: {txt}")
+            print(f"Response: {response}")
             print(f"Toxic: {prediction['toxic']}")
             print(f"Labels: {prediction['labels']}")
 
