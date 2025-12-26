@@ -78,14 +78,22 @@ pre-commit install
 
 ### Настройка Kaggle API
 
-Для скачивания датасетов необходимы Kaggle API credentials:
+Для скачивания датасетов необходимы Kaggle CLI и credentials:
 
 ```bash
-# 1. Получить API ключ с https://www.kaggle.com/account
-# 2. Установить
+# 1. Установить Kaggle CLI (если еще не установлен)
+pip install kaggle
+# или
+uv pip install kaggle
+
+# 2. Получить API ключ с https://www.kaggle.com/account
+# 3. Установить credentials
 mkdir -p ~/.kaggle
 mv kaggle.json ~/.kaggle/
 chmod 600 ~/.kaggle/kaggle.json
+
+# 4. Проверить установку
+kaggle --version
 ```
 
 ### Настройка DVC

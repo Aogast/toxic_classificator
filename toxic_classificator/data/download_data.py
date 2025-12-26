@@ -45,6 +45,19 @@ def download_data():
     with initialize(version_base=None, config_path="../../configs"):
         cfg = compose(config_name="config")
 
+    # Check if kaggle CLI is installed
+    try:
+        subprocess.run(["kaggle", "--version"], capture_output=True, check=True)
+    except FileNotFoundError:
+        print("Error: Kaggle CLI not found!")
+        print("Please install kaggle:")
+        print("  pip install kaggle")
+        print("or")
+        print("  uv pip install kaggle")
+        sys.exit(1)
+    except subprocess.CalledProcessError:
+        pass  # Command exists but returned non-zero, that's ok
+
     kaggle_json = Path.home() / ".kaggle" / "kaggle.json"
     if not kaggle_json.exists():
         print("Error: Kaggle credentials not found!")
