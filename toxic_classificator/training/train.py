@@ -27,7 +27,7 @@ def load_data(data_path: Path) -> List[Dict]:
 class ToxicCommentsDataset(Dataset):
     """Dataset for toxic comments classification"""
 
-    def __init__(self, data: List[Dict], tokenizer, max_length: int = 512):
+    def __init__(self, data: List[Dict], tokenizer, max_length: int = 128):
         self.data = data
         self.tokenizer = tokenizer
         self.max_length = max_length

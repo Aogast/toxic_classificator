@@ -1,7 +1,7 @@
 # Model configuration
 name: Qwen/Qwen2.5-0.5B-Instruct  # Smallest available Qwen model for fast training
 cache_dir: ${paths.models_dir}/cache
-max_length: 512
+max_length: 128  # Very short for demo speed
 temperature: 0.7
 top_p: 0.9
 
