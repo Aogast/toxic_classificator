@@ -12,6 +12,7 @@ import mlflow
 import torch
 from hydra import compose, initialize_config_dir
 from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor, ModelCheckpoint
+from lightning.pytorch.loggers import MLFlowLogger
 from omegaconf import DictConfig, OmegaConf
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from torch.utils.data import DataLoader, Dataset
@@ -226,61 +227,70 @@ def train(config_path: str = "configs/config.yaml"):
     mlflow.set_tracking_uri(cfg.mlflow.tracking_uri)
     mlflow.set_experiment(cfg.mlflow.experiment_name)
 
-    with mlflow.start_run(run_name=cfg.mlflow.run_name):
-        mlflow.log_params(OmegaConf.to_container(cfg, resolve=True))
+    # Create MLflow logger for Lightning
+    mlf_logger = MLFlowLogger(
+        experiment_name=cfg.mlflow.experiment_name,
+        tracking_uri=cfg.mlflow.tracking_uri,
+        run_name=cfg.mlflow.run_name,
+    )
 
-        try:
-            git_commit = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
-            mlflow.log_param("git_commit", git_commit)
-        except Exception:
-            pass
+    # Log git commit
+    try:
+        git_commit = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
+        mlf_logger.log_hyperparams({"git_commit": git_commit})
+    except Exception:
+        pass
 
-        model = ToxicClassifierModule(cfg)
-        data_module = ToxicDataModule(train_data, val_data, model.tokenizer, cfg)
+    # Log all config as hyperparams
+    mlf_logger.log_hyperparams(OmegaConf.to_container(cfg, resolve=True))
 
-        output_dir = project_root / cfg.training.output_dir
-        output_dir.mkdir(parents=True, exist_ok=True)
+    model = ToxicClassifierModule(cfg)
+    data_module = ToxicDataModule(train_data, val_data, model.tokenizer, cfg)
 
-        checkpoint_callback = ModelCheckpoint(
-            dirpath=str(output_dir),
-            filename="checkpoint-{epoch:02d}-{val_loss:.2f}",
-            save_top_k=cfg.training.save_total_limit,
-            monitor="val_loss",
-            mode="min",
-            save_last=True,
-        )
+    output_dir = project_root / cfg.training.output_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-        early_stopping = EarlyStopping(monitor="val_loss", patience=3, mode="min", verbose=True)
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=str(output_dir),
+        filename="checkpoint-{epoch:02d}-{val_loss:.2f}",
+        save_top_k=cfg.training.save_total_limit,
+        monitor="val_loss",
+        mode="min",
+        save_last=True,
+    )
 
-        lr_monitor = LearningRateMonitor(logging_interval="step")
+    # Remove early stopping - it needs validation which is slow
+    lr_monitor = LearningRateMonitor(logging_interval="step")
 
-        trainer = L.Trainer(
-            max_epochs=cfg.training.num_train_epochs,
-            accelerator="auto",
-            devices="auto",
-            precision="bf16-mixed" if cfg.training.use_bf16 else "16-mixed",
-            gradient_clip_val=cfg.training.max_grad_norm,
-            accumulate_grad_batches=cfg.training.gradient_accumulation_steps,
-            log_every_n_steps=cfg.training.logging_steps,
-            val_check_interval=cfg.training.eval_steps,
-            check_val_every_n_epoch=None,
-            callbacks=[checkpoint_callback, early_stopping, lr_monitor],
-            default_root_dir=str(project_root / cfg.paths.logs_dir),
-            enable_checkpointing=True,
-            enable_progress_bar=True,
-            enable_model_summary=True,
-        )
+    trainer = L.Trainer(
+        max_epochs=cfg.training.num_train_epochs,
+        accelerator="auto",
+        devices="auto",
+        precision="bf16-mixed" if cfg.training.use_bf16 else "16-mixed",
+        gradient_clip_val=cfg.training.max_grad_norm,
+        accumulate_grad_batches=cfg.training.gradient_accumulation_steps,
+        log_every_n_steps=cfg.training.logging_steps,
+        val_check_interval=cfg.training.eval_steps,
+        check_val_every_n_epoch=None,
+        callbacks=[checkpoint_callback, lr_monitor],
+        logger=mlf_logger,  # Add MLflow logger here!
+        default_root_dir=str(project_root / cfg.paths.logs_dir),
+        enable_checkpointing=True,
+        enable_progress_bar=True,
+        enable_model_summary=True,
+    )
 
-        trainer.fit(model, data_module)
+    trainer.fit(model, data_module)
 
-        final_dir = output_dir / "final"
-        final_dir.mkdir(parents=True, exist_ok=True)
-        model.model.save_pretrained(str(final_dir))
-        model.tokenizer.save_pretrained(str(final_dir))
+    final_dir = output_dir / "final"
+    final_dir.mkdir(parents=True, exist_ok=True)
+    model.model.save_pretrained(str(final_dir))
+    model.tokenizer.save_pretrained(str(final_dir))
 
-        mlflow.log_artifact(str(final_dir))
+    # Log final model as artifact
+    mlf_logger.experiment.log_artifact(mlf_logger.run_id, str(final_dir))
 
-        print("Training completed successfully!")
+    print("Training completed successfully!")
 
 
 if __name__ == "__main__":
