@@ -1,0 +1,29 @@
+defaults:
+  - model: qwen
+  - data: toxic_data
+  - training: lora_training
+  - _self_
+
+# Project settings
+project_name: toxic-classificator
+seed: 42
+
+# Paths
+paths:
+  data_dir: data
+  raw_data_dir: ${paths.data_dir}/raw
+  processed_data_dir: ${paths.data_dir}/processed
+  models_dir: models
+  logs_dir: logs
+  plots_dir: plots
+
+# MLflow settings
+mlflow:
+  tracking_uri: http://127.0.0.1:8080
+  experiment_name: toxic-classification
+  run_name: null  # Will be auto-generated
+
+# DVC settings
+dvc:
+  remote: local
+  auto_pull: true

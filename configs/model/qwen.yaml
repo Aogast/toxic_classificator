@@ -1,0 +1,13 @@
+# Model configuration
+name: Qwen/Qwen2.5-1.5B-Instruct
+cache_dir: ${paths.models_dir}/cache
+max_length: 512
+temperature: 0.7
+top_p: 0.9
+
+# Quantization
+load_in_4bit: true
+bnb_4bit_compute_dtype: bfloat16
+bnb_4bit_use_double_quant: true
+bnb_4bit_quant_type: nf4
+
