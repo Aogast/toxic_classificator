@@ -105,25 +105,46 @@ python convert_to_onnx.py
 
 Создаст `triton_model_repository/toxic_classificator/1/onnx_model/`
 
-### 3. Конвертация в TensorRT (опционально)
+### 3. Конвертация в TensorRT (опционально, требует NVIDIA TensorRT)
 
 ```bash
+# Установка TensorRT: https://developer.nvidia.com/tensorrt
 ./convert_to_tensorrt.sh
 ```
 
 Создаст `triton_model_repository/toxic_classificator/1/model.plan`
 
+**Примечание:** TensorRT требует NVIDIA GPU и установленный TensorRT SDK.
+
 ### 3. Запуск Triton Server
 
+**Требования:**
+- Docker
+- NVIDIA Container Toolkit (для GPU)
+
+**Установка Triton через Docker:**
+```bash
+docker pull nvcr.io/nvidia/tritonserver:24.01-py3
+
+# Запуск
+docker run --gpus=1 --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
+  -v $(pwd)/triton_model_repository:/models \
+  nvcr.io/nvidia/tritonserver:24.01-py3 \
+  tritonserver --model-repository=/models
+```
+
+Или используйте скрипт (требует установленный `tritonserver`):
 ```bash
 ./start_triton_server.sh
 ```
 
 Сервер будет доступен на `http://localhost:8000`
 
+**Примечание:** Для учебного проекта можно использовать прямой inference через `predict.py` без Triton.
+
 ## Infer
 
-### Прямой inference (без Triton)
+### Рекомендуемый способ: Прямой inference (без Triton)
 
 **Один текст:**
 ```bash
@@ -160,11 +181,14 @@ python commands.py predict --input_file example_input.json --output_file results
 ]
 ```
 
-### Inference через Triton
+### Альтернатива: Inference через Triton (требует установку Triton Server)
 
-**1. Запустить Triton Server:**
+**1. Запустить Triton Server через Docker:**
 ```bash
-./start_triton_server.sh
+docker run --gpus=1 --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
+  -v $(pwd)/triton_model_repository:/models \
+  nvcr.io/nvidia/tritonserver:24.01-py3 \
+  tritonserver --model-repository=/models
 ```
 
 **2. Использовать Python клиент:**
@@ -174,17 +198,9 @@ python triton_client.py --text "Ты идиот!"
 
 # Файл
 python triton_client.py --input_file example_input.txt --output_file triton_results.json
-
-# JSON файл
-python triton_client.py --input_file example_input.json --output_file triton_results.json
 ```
 
-**3. Или через curl (низкоуровневый API):**
-```bash
-curl -X POST http://localhost:8000/v2/models/toxic_classificator/infer \
-  -H "Content-Type: application/json" \
-  -d @triton_request.json
-```
+**Примечание:** Triton inference реализован для демонстрации production-ready подхода. Для локального тестирования используйте `python commands.py predict`.
 
 ## Структура проекта
 
