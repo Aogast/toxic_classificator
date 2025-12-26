@@ -25,7 +25,7 @@ def main():
     model.save_pretrained(onnx_output_path)
     tokenizer.save_pretrained(onnx_output_path)
     
-    print(f"✅ ONNX model saved to: {onnx_output_path}")
+    print(f"ONNX model saved to: {onnx_output_path}")
 
 if __name__ == "__main__":
     main()

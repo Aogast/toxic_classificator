@@ -1,5 +1,7 @@
 # Data configuration
-max_samples: 200  # Minimal demo: just to show it works in ~30 min
+# For demo (fast): 200 samples
+# For quality: 5000-10000 samples
+max_samples: 5000
 train_split: 0.70
 val_split: 0.15
 test_split: 0.15

@@ -78,7 +78,7 @@ def export_to_onnx(checkpoint: str = None, output_path: str = "triton_model_repo
         f.write("2. Or convert to ONNX: optimum-cli export onnx --model merged_model/ onnx_model/\n")
         f.write("3. Or convert to TensorRT: see convert_to_tensorrt.sh\n")
     
-    print(f"\n📝 Instructions saved to: {info_file}")
+    print(f"\nInstructions saved to: {info_file}")
 
 
 if __name__ == "__main__":

@@ -12,47 +12,42 @@
 
 **Технологии:**
 - PyTorch Lightning
-- Hydra (конфигурация)
-- MLflow (логирование)
-- DVC (данные)
-- PEFT/LoRA (fine-tuning)
-- ONNX + TensorRT (оптимизация)
-- Triton Inference Server (inference)
+- Hydra
+- MLflow
+- DVC
+- PEFT/LoRA
+- ONNX
+- Triton Inference Server
 
 ## Setup
 
-### 1. Установка зависимостей
+### Установка зависимостей
 
 ```bash
-# Установить uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Создать виртуальное окружение и установить зависимости
 uv venv
-source .venv/bin/activate  # Linux/Mac
-# или .venv\Scripts\activate  # Windows
+source .venv/bin/activate
 
 uv pip install -e .
 ```
 
-### 2. Настройка Kaggle API
+### Настройка Kaggle API
 
 ```bash
-# Получить API ключ: https://www.kaggle.com/settings -> Create New Token
-# Скопировать kaggle.json в ~/.kaggle/
 mkdir -p ~/.kaggle
 cp kaggle.json ~/.kaggle/
 chmod 600 ~/.kaggle/kaggle.json
 ```
 
-### 3. Pre-commit хуки
+### Pre-commit хуки
 
 ```bash
 pre-commit install
 pre-commit run -a
 ```
 
-### 4. MLflow сервер
+### MLflow сервер
 
 ```bash
 mlflow server --host 127.0.0.1 --port 8080 --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns
@@ -60,108 +55,85 @@ mlflow server --host 127.0.0.1 --port 8080 --backend-store-uri sqlite:///mlflow.
 
 ## Train
 
-### 1. Скачать данные
+### Скачать данные
 
 ```bash
 python commands.py download
 ```
 
-### 2. Подготовить данные
+### Подготовить данные
 
 ```bash
 python commands.py prepare
 ```
 
-### 3. Обучить модель
+### Обучить модель
 
 ```bash
 python commands.py train
 ```
 
-Обучение займет ~20-30 минут на RTX 3060 12GB.
-
-**Параметры обучения** (настраиваются в `configs/`):
-- Модель: Qwen2.5-0.5B-Instruct
-- LoRA rank: 8
-- Batch size: 8
-- Epochs: 3
-- Samples: 200 (demo mode)
+Параметры обучения настраиваются в `configs/`.
 
 ## Production Preparation
 
-### 1. Экспорт в ONNX
+### Экспорт в ONNX
 
 ```bash
 python commands.py export_onnx
 ```
 
-Создаст `triton_model_repository/toxic_classificator/1/model.onnx`
-
-### 2. Конвертация в ONNX (опционально)
+### Конвертация в ONNX через optimum
 
 ```bash
 python convert_to_onnx.py
 ```
 
-Создаст `triton_model_repository/toxic_classificator/1/onnx_model/`
+### Конвертация в TensorRT
 
-### 3. Конвертация в TensorRT (опционально, требует NVIDIA TensorRT)
+Требует NVIDIA TensorRT SDK.
 
 ```bash
-# Установка TensorRT: https://developer.nvidia.com/tensorrt
+export LD_LIBRARY_PATH=/usr/local/cuda-12.0/lib64:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$(pwd)/TensorRT-8.6.1.6/lib:$LD_LIBRARY_PATH
 ./convert_to_tensorrt.sh
 ```
 
-Создаст `triton_model_repository/toxic_classificator/1/model.plan`
+### Triton Inference Server
 
-**Примечание:** TensorRT требует NVIDIA GPU и установленный TensorRT SDK.
+**Примечание:** Triton Inference Server не полностью поддерживает сложные LLM модели с KV-cache через ONNX backend. Для LLM рекомендуется использовать специализированные серверы (vLLM, TGI) или прямой inference.
 
-### 3. Запуск Triton Server
+Для запуска Triton через Docker:
 
-**Требования:**
-- Docker
-- NVIDIA Container Toolkit (для GPU)
-
-**Установка Triton через Docker:**
 ```bash
 docker pull nvcr.io/nvidia/tritonserver:24.01-py3
 
-# Запуск
-docker run --gpus=1 --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
+docker run --rm -p 9000:8000 -p 9001:8001 -p 9002:8002 \
   -v $(pwd)/triton_model_repository:/models \
   nvcr.io/nvidia/tritonserver:24.01-py3 \
   tritonserver --model-repository=/models
 ```
 
-Или используйте скрипт (требует установленный `tritonserver`):
+Клиент:
+
 ```bash
-./start_triton_server.sh
+python triton_client.py --text "текст" --triton_url localhost:9000
 ```
-
-Сервер будет доступен на `http://localhost:8000`
-
-**Примечание:** Для учебного проекта можно использовать прямой inference через `predict.py` без Triton.
 
 ## Infer
 
-### Рекомендуемый способ: Прямой inference (без Triton)
+### Прямой inference
 
-**Один текст:**
 ```bash
 python commands.py predict --text "Ты идиот!"
-```
 
-**Файл (построчно):**
-```bash
 python commands.py predict --input_file example_input.txt
-```
 
-**JSON файл:**
-```bash
 python commands.py predict --input_file example_input.json --output_file results.json
 ```
 
-**Формат входного JSON:**
+Формат входного JSON:
+
 ```json
 [
   {"text": "Ты идиот!"},
@@ -169,7 +141,8 @@ python commands.py predict --input_file example_input.json --output_file results
 ]
 ```
 
-**Формат выходного JSON:**
+Формат выходного JSON:
+
 ```json
 [
   {
@@ -181,68 +154,57 @@ python commands.py predict --input_file example_input.json --output_file results
 ]
 ```
 
-### Альтернатива: Inference через Triton (требует установку Triton Server)
-
-**1. Запустить Triton Server через Docker:**
-```bash
-docker run --gpus=1 --rm -p 8000:8000 -p 8001:8001 -p 8002:8002 \
-  -v $(pwd)/triton_model_repository:/models \
-  nvcr.io/nvidia/tritonserver:24.01-py3 \
-  tritonserver --model-repository=/models
-```
-
-**2. Использовать Python клиент:**
-```bash
-# Один текст
-python triton_client.py --text "Ты идиот!"
-
-# Файл
-python triton_client.py --input_file example_input.txt --output_file triton_results.json
-```
-
-**Примечание:** Triton inference реализован для демонстрации production-ready подхода. Для локального тестирования используйте `python commands.py predict`.
-
 ## Структура проекта
 
 ```
 toxic_classificator/
-├── toxic_classificator/       # Основной пакет
-│   ├── data/                  # Скрипты работы с данными
-│   ├── training/              # Обучение и оценка
-│   └── inference/             # Inference и экспорт
-├── configs/                   # Hydra конфигурации
+├── toxic_classificator/
+│   ├── data/
+│   ├── training/
+│   └── inference/
+├── configs/
 │   ├── config.yaml
 │   ├── model/
 │   ├── data/
 │   └── training/
-├── data/                      # Данные (в DVC)
+├── data/
 │   ├── raw/
 │   └── processed/
-├── models/                    # Обученные модели
-├── triton_model_repository/   # Модели для Triton
-├── commands.py                # CLI (Fire)
-├── pyproject.toml             # Зависимости (uv)
-└── .pre-commit-config.yaml    # Pre-commit хуки
+├── models/
+├── triton_model_repository/
+├── commands.py
+├── pyproject.toml
+└── .pre-commit-config.yaml
 ```
+
+## Известные ограничения
+
+1. **Triton Inference Server**: ONNX модели LLM с KV-cache имеют 51 вход/выход, что усложняет интеграцию с Triton. Для production рекомендуется использовать специализированные серверы для LLM.
+
+2. **TensorRT**: Требует установленный CUDA Toolkit и TensorRT SDK. Конвертация больших LLM моделей может быть нестабильной.
+
+3. **Качество модели**: Для демонстрации используется минимальный датасет (200 сэмплов). Для реального использования увеличьте `max_samples` в `configs/data/toxic_data.yaml` до 5000-10000.
 
 ## Troubleshooting
 
-**Ошибка при predict (JSON decode):**
-```bash
-# Модель повреждена, переобучите
-rm -rf models/finetuned/final
-python commands.py train
-```
-
 **Out of Memory:**
+
 ```yaml
-# В configs/training/lora_training.yaml
-per_device_train_batch_size: 4
-gradient_accumulation_steps: 2
+# configs/training/lora_training.yaml
+per_device_train_batch_size: 2
+gradient_accumulation_steps: 8
 ```
 
 **DVC ошибки:**
+
 ```bash
 dvc status
 dvc add data/raw --force
+```
+
+**MLflow не запускается:**
+
+```bash
+lsof -i :8080
+mlflow server --host 127.0.0.1 --port 5000
 ```

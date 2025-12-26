@@ -20,8 +20,8 @@ class ToxicClassifierTritonClient:
         tokenizer_path = "triton_model_repository/toxic_classificator/1/merged_model"
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
         
-        print(f"✅ Connected to Triton at {triton_url}")
-        print(f"✅ Model: {model_name}")
+        print(f"Connected to Triton at {triton_url}")
+        print(f"Model: {model_name}")
     
     def predict(self, text: str, max_length: int = 128) -> dict:
         """
@@ -143,7 +143,7 @@ def main():
     if args.output_file:
         with open(args.output_file, "w", encoding="utf-8") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
-        print(f"✅ Results saved to: {args.output_file}")
+        print(f"Results saved to: {args.output_file}")
     else:
         for result in results:
             print(f"\nText: {result['text']}")
