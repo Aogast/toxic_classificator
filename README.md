@@ -1,405 +1,220 @@
-# Классификатор токсичности в диалоге
+# Классификатор токсичных комментариев
 
-**Автор:** Сыров Артём Андреевич
+**Автор:** Сыров Артём Андреевич  
+**Курс:** MLOps, МФТИ, осень 2024
 
-## Описание проекта
+## Описание
 
-Проект разработан для автоматической классификации токсичных сообщений в диалогах с использованием модели Qwen2.5-1.5B-Instruct и fine-tuning через LoRA (QLoRA с 4-bit квантизацией).
+Модель для классификации токсичных сообщений на русском и английском языках. Использует Qwen2.5-0.5B-Instruct с LoRA fine-tuning.
 
-### Цель
-
-Разработать модель, которая на сообщениях из переписки будет определять, токсичны ли сообщения от собеседника, а также тип токсичности/агрессии.
-
-### Формат данных
-
-- **Вход**: строка с текстом сообщения
-- **Выход**: JSON с полями `toxic` (boolean) и `labels` (список типов токсичности)
-
-Пример:
-
-```json
-{
-  "toxic": true,
-  "labels": ["insult", "obscene"]
-}
-```
-
-### Метрики
-
-- **F1-score для токсичности**: цель ≥0.85
-- **F1-score для типов**: цель ≥0.70
-
-### Датасеты
-
+**Датасеты:**
 - Jigsaw Multilingual Toxic Comment Classification
 - Russian Language Toxic Comments
-- Объем: до 40k samples
-- Разделение: 70% train / 15% val / 15% test (стратифицированное)
 
-### Технологии
-
-- **PyTorch Lightning** - фреймворк для обучения
-- **Hydra** - управление конфигурациями
-- **MLflow** - логирование экспериментов
-- **DVC** - версионирование данных
-- **PEFT (LoRA)** - эффективный fine-tuning
-- **4-bit quantization** - экономия памяти
-- **ONNX + TensorRT** - оптимизация для продакшена
-- **Triton Inference Server** - сервинг модели
+**Технологии:**
+- PyTorch Lightning
+- Hydra (конфигурация)
+- MLflow (логирование)
+- DVC (данные)
+- PEFT/LoRA (fine-tuning)
+- ONNX + TensorRT (оптимизация)
+- Triton Inference Server (inference)
 
 ## Setup
 
-### Требования
-
-- Python ≥3.10
-- CUDA-compatible GPU (рекомендуется 8GB+ VRAM)
-- ~15GB свободного места на диске
-
-### Установка окружения
+### 1. Установка зависимостей
 
 ```bash
-# Установить uv (если еще не установлен)
-python3 -m pip install uv
+# Установить uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Создать виртуальное окружение
+# Создать виртуальное окружение и установить зависимости
 uv venv
 source .venv/bin/activate  # Linux/Mac
 # или .venv\Scripts\activate  # Windows
 
-# Установить зависимости
 uv pip install -e .
-
-# Установить dev зависимости
-uv pip install -e ".[dev]"
-
-# Настроить pre-commit хуки
-pre-commit install
 ```
 
-### Настройка Kaggle API
-
-Для скачивания датасетов необходимы Kaggle CLI и credentials:
+### 2. Настройка Kaggle API
 
 ```bash
-# 1. Установить Kaggle CLI (если еще не установлен)
-pip install kaggle
-# или
-uv pip install kaggle
-
-# 2. Получить API ключ с https://www.kaggle.com/account
-# 3. Установить credentials
+# Получить API ключ: https://www.kaggle.com/settings -> Create New Token
+# Скопировать kaggle.json в ~/.kaggle/
 mkdir -p ~/.kaggle
-mv kaggle.json ~/.kaggle/
+cp kaggle.json ~/.kaggle/
 chmod 600 ~/.kaggle/kaggle.json
-
-# 4. Проверить установку
-kaggle --version
 ```
 
-### Настройка DVC
-
-DVC используется для версионирования данных и моделей:
+### 3. Pre-commit хуки
 
 ```bash
-# Инициализировать DVC (уже сделано)
-dvc init
-
-# Настроить remote (опционально, для команды)
-# По умолчанию используется локальное хранилище /tmp/dvc-storage
-dvc remote add -d myremote /path/to/storage
+pre-commit install
+pre-commit run -a
 ```
 
-### Настройка MLflow
-
-MLflow используется для логирования экспериментов:
+### 4. MLflow сервер
 
 ```bash
-# Запустить MLflow tracking server
-mlflow server --host 127.0.0.1 --port 8080
-
-# Сервер должен быть запущен перед обучением
-# UI доступен по адресу: http://127.0.0.1:8080
+mlflow server --host 127.0.0.1 --port 8080 --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns
 ```
 
 ## Train
 
-### Полный пайплайн обучения
+### 1. Скачать данные
 
 ```bash
-# 1. Скачать данные из Kaggle
 python commands.py download
+```
 
-# 2. Подготовить данные
+### 2. Подготовить данные
+
+```bash
 python commands.py prepare
+```
 
-# 3. Обучить модель
+### 3. Обучить модель
+
+```bash
 python commands.py train
-
-# 4. Оценить модель
-python commands.py evaluate
 ```
 
-### Запуск с кастомными конфигами
+Обучение займет ~20-30 минут на RTX 3060 12GB.
+
+**Параметры обучения** (настраиваются в `configs/`):
+- Модель: Qwen2.5-0.5B-Instruct
+- LoRA rank: 8
+- Batch size: 8
+- Epochs: 3
+- Samples: 200 (demo mode)
+
+## Production Preparation
+
+### 1. Экспорт в ONNX
 
 ```bash
-# Изменить параметры обучения
-python commands.py train --config-path configs --config-name config \
-    training.num_train_epochs=5 \
-    training.per_device_train_batch_size=2
-
-# Использовать другую модель
-python commands.py train model=qwen
-
-# Изменить размер данных
-python commands.py train data.max_samples=10000
+python commands.py export_onnx
 ```
 
-### Конфигурация
+Создаст `triton_model_repository/toxic_classificator/1/model.onnx`
 
-Все гиперпараметры находятся в `configs/`:
-
-- `config.yaml` - основная конфигурация
-- `model/qwen.yaml` - параметры модели
-- `data/toxic_data.yaml` - параметры данных
-- `training/lora_training.yaml` - параметры обучения
-
-Основные параметры:
-
-```yaml
-# Модель
-model:
-  name: Qwen/Qwen2.5-1.5B-Instruct
-  max_length: 512
-  load_in_4bit: true
-
-# LoRA
-training.lora:
-  r: 16
-  lora_alpha: 32
-
-# Обучение
-training:
-  num_train_epochs: 3
-  per_device_train_batch_size: 4
-  learning_rate: 2.0e-4
-```
-
-## Production preparation
-
-### Экспорт в ONNX
+### 2. Конвертация в TensorRT
 
 ```bash
-# Экспортировать обученную модель в ONNX
-python commands.py export_onnx \
-    --checkpoint models/finetuned/final \
-    --output-path models/model.onnx
+./convert_to_tensorrt.sh
 ```
 
-### Конвертация в TensorRT
+Создаст `triton_model_repository/toxic_classificator/1/model.plan`
+
+### 3. Запуск Triton Server
 
 ```bash
-# Конвертировать ONNX модель в TensorRT
-./convert_to_tensorrt.sh models/model.onnx models/model.trt
+./start_triton_server.sh
 ```
 
-Требуется установленный TensorRT SDK.
-
-### Подготовка для Triton
-
-```bash
-# 1. Скопировать ONNX модель в Triton model repository
-cp models/model.onnx triton_model_repository/toxic_classificator/1/model.onnx
-
-# 2. Конфигурация уже создана в triton_model_repository/toxic_classificator/config.pbtxt
-```
+Сервер будет доступен на `http://localhost:8000`
 
 ## Infer
 
-### Локальный инференс
+### Прямой inference (без Triton)
 
+**Один текст:**
 ```bash
-# Одно сообщение
-python commands.py predict --text "Ваш текст здесь"
-
-# Из файла (один текст на строку)
-python commands.py predict \
-    --input-file input.txt \
-    --output-file predictions.json
-
-# С кастомным чекпоинтом
-python commands.py predict \
-    --text "Текст" \
-    --checkpoint models/finetuned/final
+python commands.py predict --text "Ты идиот!"
 ```
 
-### Triton Inference Server
-
+**Файл (построчно):**
 ```bash
-# 1. Запустить Triton server
-./start_triton_server.sh
-
-# 2. Сервер будет доступен по адресам:
-#    HTTP: http://localhost:8000
-#    gRPC: localhost:8001
-#    Metrics: http://localhost:8002/metrics
+python commands.py predict --input_file example_input.txt
 ```
 
-Пример запроса к Triton:
+**JSON файл:**
+```bash
+python commands.py predict --input_file example_input.json --output_file results.json
+```
 
-```python
-import tritonclient.http as httpclient
-import numpy as np
-
-client = httpclient.InferenceServerClient(url="localhost:8000")
-
-# Подготовить входные данные
-input_ids = np.array([[1, 2, 3, 4]], dtype=np.int64)
-attention_mask = np.array([[1, 1, 1, 1]], dtype=np.int64)
-
-inputs = [
-    httpclient.InferInput("input_ids", input_ids.shape, "INT64"),
-    httpclient.InferInput("attention_mask", attention_mask.shape, "INT64"),
+**Формат входного JSON:**
+```json
+[
+  {"text": "Ты идиот!"},
+  {"text": "Привет, как дела?"}
 ]
-inputs[0].set_data_from_numpy(input_ids)
-inputs[1].set_data_from_numpy(attention_mask)
-
-outputs = [httpclient.InferRequestedOutput("logits")]
-
-response = client.infer("toxic_classificator", inputs, outputs=outputs)
-logits = response.as_numpy("logits")
 ```
 
-### Формат входных данных
-
-Текстовый файл с одним сообщением на строку:
-
-```
-Привет! Как дела?
-Ты идиот!
-Спасибо за помощь
-```
-
-### Формат выходных данных
-
-JSON файл с предсказаниями:
-
+**Формат выходного JSON:**
 ```json
 [
   {
-    "text": "Привет! Как дела?",
-    "toxic": false,
-    "labels": []
-  },
-  {
     "text": "Ты идиот!",
     "toxic": true,
-    "labels": ["insult"]
+    "labels": [],
+    "response": "toxic"
   }
 ]
 ```
 
-## Code Quality
-
-### Pre-commit хуки
-
-Проект использует pre-commit для проверки качества кода:
+### Inference через Triton
 
 ```bash
-# Установить хуки
-pre-commit install
+# Запустить Triton (если еще не запущен)
+./start_triton_server.sh
 
-# Запустить на всех файлах
-pre-commit run -a
+# Отправить запрос
+curl -X POST http://localhost:8000/v2/models/toxic_classificator/infer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inputs": [
+      {
+        "name": "input_ids",
+        "shape": [1, 10],
+        "datatype": "INT64",
+        "data": [...]
+      }
+    ]
+  }'
 ```
 
-Используемые хуки:
-
-- `black` - форматирование Python кода
-- `isort` - сортировка импортов
-- `flake8` - линтинг
-- `prettier` - форматирование YAML/JSON/Markdown
-- Стандартные хуки pre-commit (trailing whitespace, EOF, etc.)
-
-### Структура проекта
+## Структура проекта
 
 ```
-toxic-classificator/
-├── configs/                    # Hydra конфигурации
+toxic_classificator/
+├── toxic_classificator/       # Основной пакет
+│   ├── data/                  # Скрипты работы с данными
+│   ├── training/              # Обучение и оценка
+│   └── inference/             # Inference и экспорт
+├── configs/                   # Hydra конфигурации
 │   ├── config.yaml
 │   ├── model/
 │   ├── data/
 │   └── training/
-├── toxic_classificator/        # Основной пакет
-│   ├── data/
-│   │   ├── download_data.py
-│   │   └── prepare_data.py
-│   ├── training/
-│   │   ├── train.py
-│   │   └── evaluate.py
-│   ├── inference/
-│   │   ├── predict.py
-│   │   └── export_onnx.py
-│   └── models/
-├── data/                       # Данные (под DVC)
+├── data/                      # Данные (в DVC)
 │   ├── raw/
 │   └── processed/
-├── models/                     # Модели (под DVC)
-│   ├── finetuned/
-│   └── cache/
-├── triton_model_repository/    # Triton модели
-├── plots/                      # Графики и результаты
-├── logs/                       # Логи обучения
-├── commands.py                 # Главная точка входа (Fire CLI)
-├── pyproject.toml              # Зависимости (uv)
-├── .pre-commit-config.yaml     # Pre-commit конфигурация
-├── .dvc/                       # DVC конфигурация
-└── README.md                   # Этот файл
+├── models/                    # Обученные модели
+├── triton_model_repository/   # Модели для Triton
+├── commands.py                # CLI (Fire)
+├── pyproject.toml             # Зависимости (uv)
+└── .pre-commit-config.yaml    # Pre-commit хуки
 ```
 
 ## Troubleshooting
 
-### Out of Memory
+**Ошибка при predict (JSON decode):**
+```bash
+# Модель повреждена, переобучите
+rm -rf models/finetuned/final
+python commands.py train
+```
 
-Если не хватает GPU памяти:
-
+**Out of Memory:**
 ```yaml
 # В configs/training/lora_training.yaml
-per_device_train_batch_size: 2
-gradient_accumulation_steps: 8
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 2
 ```
 
-### DVC ошибки
-
+**DVC ошибки:**
 ```bash
-# Проверить статус DVC
 dvc status
-
-# Принудительно добавить данные
 dvc add data/raw --force
-
-# Проверить remote
-dvc remote list
-```
-
-### MLflow не запускается
-
-```bash
-# Проверить порт
-lsof -i :8080
-
-# Запустить на другом порту
-mlflow server --host 127.0.0.1 --port 5000
-
-# Обновить в configs/config.yaml
-mlflow.tracking_uri: http://127.0.0.1:5000
-```
-
-### Triton ошибки
-
-```bash
-# Проверить логи
-docker logs triton-server
-
-# Проверить модель
-curl localhost:8000/v2/models/toxic_classificator
 ```
