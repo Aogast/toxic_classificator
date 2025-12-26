@@ -2,6 +2,7 @@
 Training script with PyTorch Lightning, Hydra, and MLflow
 """
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import Dict, List
@@ -9,7 +10,7 @@ from typing import Dict, List
 import lightning as L
 import mlflow
 import torch
-from hydra import compose, initialize
+from hydra import compose, initialize_config_dir
 from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor, ModelCheckpoint
 from omegaconf import DictConfig, OmegaConf
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
@@ -190,9 +191,14 @@ def train(config_path: str = "configs/config.yaml"):
     """Main training function"""
     print("Starting training...")
 
-    # Initialize Hydra - path relative to this file
-    # Path goes up 3 levels: train.py -> training/ -> toxic_classificator/ -> project_root/
-    with initialize(version_base=None, config_path="../../../configs"):
+    # Initialize Hydra with absolute path to configs
+    project_root = Path.cwd()
+    config_dir = project_root / "configs"
+    
+    if not config_dir.exists():
+        raise FileNotFoundError(f"Config directory not found: {config_dir}")
+    
+    with initialize_config_dir(version_base=None, config_dir=str(config_dir.absolute())):
         cfg = compose(config_name="config")
 
     print(OmegaConf.to_yaml(cfg))

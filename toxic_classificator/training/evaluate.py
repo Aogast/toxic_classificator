@@ -8,7 +8,7 @@ from typing import Dict, List
 
 import mlflow
 import torch
-from hydra import compose, initialize
+from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig
 from sklearn.metrics import (
     accuracy_score,
@@ -57,8 +57,11 @@ def evaluate(config_path: str = "configs/config.yaml", checkpoint: str = None):
     """Evaluate model on test data"""
     print("Starting evaluation...")
 
-    # Initialize Hydra - path relative to this file
-    with initialize(version_base=None, config_path="../../../configs"):
+    # Initialize Hydra with absolute path
+    project_root = Path.cwd()
+    config_dir = project_root / "configs"
+    
+    with initialize_config_dir(version_base=None, config_dir=str(config_dir.absolute())):
         cfg = compose(config_name="config")
 
     project_root = Path.cwd()

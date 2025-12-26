@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 import torch
-from hydra import compose, initialize
+from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -38,11 +38,12 @@ def predict(
     text: str = None, input_file: str = None, output_file: str = None, config_path: str = "configs/config.yaml", checkpoint: str = None
 ):
     """Run predictions"""
-    # Initialize Hydra - path relative to this file
-    with initialize(version_base=None, config_path="../../../configs"):
-        cfg = compose(config_name="config")
-
+    # Initialize Hydra with absolute path
     project_root = Path.cwd()
+    config_dir = project_root / "configs"
+    
+    with initialize_config_dir(version_base=None, config_dir=str(config_dir.absolute())):
+        cfg = compose(config_name="config")
     model_path = checkpoint if checkpoint else str(project_root / cfg.training.output_dir / "final")
 
     print(f"Loading model from: {model_path}")
