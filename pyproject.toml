@@ -29,7 +29,7 @@ dependencies = [
     "onnx>=1.15.0",
     "onnxruntime>=1.17.0",
     "onnxscript>=0.1.0",
-    "optimum[exporters]>=1.16.0",
+    "optimum>=1.16.0",
     "tritonclient[all]>=2.40.0",
     "pyyaml>=6.0.0",
 ]

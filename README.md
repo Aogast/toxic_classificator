@@ -97,7 +97,15 @@ python commands.py export_onnx
 
 Создаст `triton_model_repository/toxic_classificator/1/model.onnx`
 
-### 2. Конвертация в TensorRT
+### 2. Конвертация в ONNX (опционально)
+
+```bash
+python convert_to_onnx.py
+```
+
+Создаст `triton_model_repository/toxic_classificator/1/onnx_model/`
+
+### 3. Конвертация в TensorRT (опционально)
 
 ```bash
 ./convert_to_tensorrt.sh
