@@ -3,8 +3,8 @@
 
 set -e
 
-ONNX_MODEL=${1:-"models/model.onnx"}
-TRT_MODEL=${2:-"models/model.trt"}
+ONNX_MODEL=${1:-"triton_model_repository/toxic_classificator/1/onnx_model/model.onnx"}
+TRT_MODEL=${2:-"triton_model_repository/toxic_classificator/1/model.plan"}
 
 echo "Converting ONNX to TensorRT..."
 echo "Input:  $ONNX_MODEL"
