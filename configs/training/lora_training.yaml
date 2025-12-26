@@ -1,16 +1,16 @@
 # Training configuration
 output_dir: ${paths.models_dir}/finetuned
-num_train_epochs: 3
+num_train_epochs: 2  # Reduced from 3 for faster training
 per_device_train_batch_size: 4
 per_device_eval_batch_size: 8
 gradient_accumulation_steps: 4
-learning_rate: 2.0e-4
+learning_rate: 3.0e-4  # Slightly higher LR for faster convergence
 weight_decay: 0.01
 warmup_ratio: 0.1
 lr_scheduler_type: cosine
 logging_steps: 10
-eval_steps: 100
-save_steps: 500
+eval_steps: 50  # More frequent eval
+save_steps: 200  # More frequent saves
 save_total_limit: 3
 gradient_checkpointing: true
 max_grad_norm: 0.3
