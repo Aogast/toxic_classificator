@@ -63,13 +63,13 @@ class Commands:
         predict(text, input_file, output_file, config_path, checkpoint)
 
     def export_onnx(
-        self, checkpoint: str, output_path: str = "models/model.onnx", config_path: str = "configs/config.yaml"
+        self, checkpoint: str = None, output_path: str = "triton_model_repository/toxic_classificator/1/model.onnx", config_path: str = "configs/config.yaml"
     ):
         """
         Export model to ONNX format
 
         Args:
-            checkpoint: Path to model checkpoint
+            checkpoint: Path to LoRA adapter (default: models/finetuned/final)
             output_path: Output path for ONNX model
             config_path: Path to config file
         """
