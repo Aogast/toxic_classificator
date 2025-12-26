@@ -79,18 +79,22 @@ class ToxicClassifierModule(L.LightningModule):
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
+        # Create BitsAndBytesConfig for 4-bit quantization
+        from transformers import BitsAndBytesConfig
+        
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=self.cfg.model.load_in_4bit,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=self.cfg.model.bnb_4bit_use_double_quant,
+            bnb_4bit_quant_type=self.cfg.model.bnb_4bit_quant_type,
+        )
+        
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            load_in_4bit=self.cfg.model.load_in_4bit,
+            quantization_config=bnb_config,
             torch_dtype=torch.bfloat16,
             device_map="auto",
             trust_remote_code=True,
-            quantization_config={
-                "load_in_4bit": self.cfg.model.load_in_4bit,
-                "bnb_4bit_compute_dtype": torch.bfloat16,
-                "bnb_4bit_use_double_quant": self.cfg.model.bnb_4bit_use_double_quant,
-                "bnb_4bit_quant_type": self.cfg.model.bnb_4bit_quant_type,
-            },
         )
 
         self.model = prepare_model_for_kbit_training(self.model)
