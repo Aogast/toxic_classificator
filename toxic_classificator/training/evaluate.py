@@ -57,9 +57,8 @@ def evaluate(config_path: str = "configs/config.yaml", checkpoint: str = None):
     """Evaluate model on test data"""
     print("Starting evaluation...")
 
-    # Initialize Hydra
-    config_dir = Path(__file__).parent.parent.parent / "configs"
-    with initialize(version_base=None, config_path=str(config_dir)):
+    # Initialize Hydra - path relative to this file
+    with initialize(version_base=None, config_path="../../../configs"):
         cfg = compose(config_name="config")
 
     project_root = Path.cwd()

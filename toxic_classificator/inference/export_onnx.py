@@ -17,9 +17,8 @@ def export_to_onnx(checkpoint: str, output_path: str = "models/model.onnx", conf
         output_path: Output path for ONNX model
         config_path: Path to config file
     """
-    # Initialize Hydra
-    config_dir = Path(__file__).parent.parent.parent / "configs"
-    with initialize(version_base=None, config_path=str(config_dir)):
+    # Initialize Hydra - path relative to this file
+    with initialize(version_base=None, config_path="../../../configs"):
         cfg = compose(config_name="config")
     print(f"Loading model from: {checkpoint}")
 
