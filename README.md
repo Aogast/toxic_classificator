@@ -395,11 +395,3 @@ docker logs triton-server
 # Проверить модель
 curl localhost:8000/v2/models/toxic_classificator
 ```
-
-## Лицензия
-
-MIT License
-
-## Контакты
-
-Сыров Артём Андреевич
