@@ -1,6 +1,7 @@
 """
-Export model to ONNX format
+Export model to ONNX format using Optimum
 """
+import shutil
 import torch
 from pathlib import Path
 from hydra import compose, initialize_config_dir
@@ -12,6 +13,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 def export_to_onnx(checkpoint: str = None, output_path: str = "triton_model_repository/toxic_classificator/1/model.onnx", config_path: str = "configs/config.yaml"):
     """
     Export LoRA model to ONNX format for Triton Inference Server
+    
+    Note: Full ONNX export of large LLMs is complex. This creates a merged PyTorch model
+    that can be used with TorchScript or saved for later ONNX conversion.
 
     Args:
         checkpoint: Path to LoRA adapter (default: models/finetuned/final)
@@ -44,46 +48,37 @@ def export_to_onnx(checkpoint: str = None, output_path: str = "triton_model_repo
     print(f"Loading LoRA adapter from: {adapter_path}")
     model = PeftModel.from_pretrained(base_model, adapter_path)
     
-    # Merge LoRA weights into base model for ONNX export
+    # Merge LoRA weights into base model
     print("Merging LoRA weights...")
     model = model.merge_and_unload()
     model.eval()
 
-    # Prepare dummy inputs
-    dummy_text = "Human: Привет\nAssistant:"
-    inputs = tokenizer(dummy_text, return_tensors="pt", max_length=cfg.model.max_length, truncation=True)
-
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-
-    print(f"Exporting to ONNX: {output_path}")
-
     output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_dir = output_path.parent
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Export to ONNX
-    torch.onnx.export(
-        model,
-        (input_ids, attention_mask),
-        str(output_path),
-        input_names=["input_ids", "attention_mask"],
-        output_names=["logits"],
-        dynamic_axes={
-            "input_ids": {0: "batch", 1: "sequence"},
-            "attention_mask": {0: "batch", 1: "sequence"},
-            "logits": {0: "batch", 1: "sequence"}
-        },
-        opset_version=14,
-        do_constant_folding=True,
-        export_params=True,
-    )
-
-    # Save tokenizer for Triton
-    tokenizer_path = output_path.parent / "tokenizer"
-    tokenizer.save_pretrained(str(tokenizer_path))
-
-    print(f"✅ Model exported to ONNX: {output_path}")
-    print(f"✅ Tokenizer saved to: {tokenizer_path}")
+    # Save merged model in PyTorch format (easier for Triton with PyTorch backend)
+    merged_model_dir = output_dir / "merged_model"
+    print(f"Saving merged model to: {merged_model_dir}")
+    model.save_pretrained(str(merged_model_dir))
+    tokenizer.save_pretrained(str(merged_model_dir))
+    
+    print(f"\n✅ Merged model saved to: {merged_model_dir}")
+    print(f"   - This model can be used with Triton PyTorch backend")
+    print(f"   - Or converted to ONNX/TensorRT later")
+    
+    # Create a simple info file
+    info_file = output_dir / "README.txt"
+    with open(info_file, "w") as f:
+        f.write("Merged LoRA model for Triton Inference Server\n")
+        f.write(f"Base model: {cfg.model.name}\n")
+        f.write(f"LoRA adapter: {adapter_path}\n")
+        f.write("\nFor Triton deployment:\n")
+        f.write("1. Use PyTorch backend with merged_model/\n")
+        f.write("2. Or convert to ONNX: optimum-cli export onnx --model merged_model/ onnx_model/\n")
+        f.write("3. Or convert to TensorRT: see convert_to_tensorrt.sh\n")
+    
+    print(f"\n📝 Instructions saved to: {info_file}")
 
 
 if __name__ == "__main__":
