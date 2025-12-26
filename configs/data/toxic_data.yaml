@@ -1,5 +1,5 @@
 # Data configuration
-max_samples: 5000  # Reduced for faster training (~30 min on RTX 3060)
+max_samples: 2000  # Further reduced for 30 min training on RTX 3060
 train_split: 0.70
 val_split: 0.15
 test_split: 0.15

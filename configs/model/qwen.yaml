@@ -1,5 +1,5 @@
 # Model configuration
-name: Qwen/Qwen2.5-1.5B-Instruct
+name: Qwen/Qwen3-0.6B-Instruct  # Qwen3 0.6B for fast training (~30 min on RTX 3060)
 cache_dir: ${paths.models_dir}/cache
 max_length: 512
 temperature: 0.7
