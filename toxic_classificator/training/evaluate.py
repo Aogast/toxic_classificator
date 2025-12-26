@@ -6,9 +6,9 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List
 
-import hydra
 import mlflow
 import torch
+from hydra import compose, initialize
 from omegaconf import DictConfig
 from sklearn.metrics import (
     accuracy_score,
@@ -53,10 +53,14 @@ def parse_response(response: str) -> Dict:
         return {"toxic": toxic, "labels": []}
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="config")
-def evaluate(cfg: DictConfig, checkpoint: str = None):
+def evaluate(config_path: str = "configs/config.yaml", checkpoint: str = None):
     """Evaluate model on test data"""
     print("Starting evaluation...")
+
+    # Initialize Hydra
+    config_dir = Path(__file__).parent.parent.parent / "configs"
+    with initialize(version_base=None, config_path=str(config_dir)):
+        cfg = compose(config_name="config")
 
     project_root = Path.cwd()
 

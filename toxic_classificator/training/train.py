@@ -190,8 +190,9 @@ def train(config_path: str = "configs/config.yaml"):
     """Main training function"""
     print("Starting training...")
 
-    # Initialize Hydra
-    with initialize(version_base=None, config_path="../configs"):
+    # Initialize Hydra - path relative to project root
+    config_dir = Path(__file__).parent.parent.parent / "configs"
+    with initialize(version_base=None, config_path=str(config_dir)):
         cfg = compose(config_name="config")
 
     print(OmegaConf.to_yaml(cfg))

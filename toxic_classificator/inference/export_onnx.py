@@ -3,21 +3,24 @@ Export model to ONNX format
 """
 import torch
 from pathlib import Path
-import hydra
+from hydra import compose, initialize
 from omegaconf import DictConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="config")
-def export_to_onnx(cfg: DictConfig, checkpoint: str, output_path: str = "models/model.onnx"):
+def export_to_onnx(checkpoint: str, output_path: str = "models/model.onnx", config_path: str = "configs/config.yaml"):
     """
     Export model to ONNX format
 
     Args:
-        cfg: Hydra config
         checkpoint: Path to model checkpoint
         output_path: Output path for ONNX model
+        config_path: Path to config file
     """
+    # Initialize Hydra
+    config_dir = Path(__file__).parent.parent.parent / "configs"
+    with initialize(version_base=None, config_path=str(config_dir)):
+        cfg = compose(config_name="config")
     print(f"Loading model from: {checkpoint}")
 
     tokenizer = AutoTokenizer.from_pretrained(checkpoint, trust_remote_code=True)

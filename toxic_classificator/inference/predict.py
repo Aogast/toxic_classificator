@@ -4,8 +4,8 @@ Prediction script
 import json
 from pathlib import Path
 
-import hydra
 import torch
+from hydra import compose, initialize
 from omegaconf import DictConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -34,11 +34,15 @@ def parse_response(response: str) -> dict:
     return {"toxic": toxic, "labels": []}
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="config")
 def predict(
-    cfg: DictConfig, text: str = None, input_file: str = None, output_file: str = None, checkpoint: str = None
+    text: str = None, input_file: str = None, output_file: str = None, config_path: str = "configs/config.yaml", checkpoint: str = None
 ):
     """Run predictions"""
+    # Initialize Hydra
+    config_dir = Path(__file__).parent.parent.parent / "configs"
+    with initialize(version_base=None, config_path=str(config_dir)):
+        cfg = compose(config_name="config")
+
     project_root = Path.cwd()
     model_path = checkpoint if checkpoint else str(project_root / cfg.training.output_dir / "final")
 
