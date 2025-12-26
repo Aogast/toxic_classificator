@@ -100,10 +100,13 @@ class ToxicClassifierModule(L.LightningModule):
 
         self.model = prepare_model_for_kbit_training(self.model)
 
+        # Convert Hydra ListConfig to regular list for JSON serialization
+        target_modules = list(self.cfg.training.lora.target_modules)
+        
         lora_config = LoraConfig(
             r=self.cfg.training.lora.r,
             lora_alpha=self.cfg.training.lora.lora_alpha,
-            target_modules=self.cfg.training.lora.target_modules,
+            target_modules=target_modules,
             lora_dropout=self.cfg.training.lora.lora_dropout,
             bias=self.cfg.training.lora.bias,
             task_type=self.cfg.training.lora.task_type,
