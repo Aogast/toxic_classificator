@@ -35,12 +35,9 @@ ENV/
 *~
 
 # Data files - managed by DVC
-data/raw/*
-data/processed/*
-!data/raw/.gitkeep
-!data/processed/.gitkeep
+/data/raw
+/data/processed
 *.csv
-*.json
 *.h5
 *.hdf5
 
@@ -80,3 +77,5 @@ Thumbs.db
 # Triton
 triton_model_repository/*/1/*.onnx
 triton_model_repository/*/1/*.plan
+/data/raw
+/data/processed
