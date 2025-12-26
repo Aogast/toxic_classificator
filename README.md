@@ -162,23 +162,28 @@ python commands.py predict --input_file example_input.json --output_file results
 
 ### Inference через Triton
 
+**1. Запустить Triton Server:**
 ```bash
-# Запустить Triton (если еще не запущен)
 ./start_triton_server.sh
+```
 
-# Отправить запрос
+**2. Использовать Python клиент:**
+```bash
+# Один текст
+python triton_client.py --text "Ты идиот!"
+
+# Файл
+python triton_client.py --input_file example_input.txt --output_file triton_results.json
+
+# JSON файл
+python triton_client.py --input_file example_input.json --output_file triton_results.json
+```
+
+**3. Или через curl (низкоуровневый API):**
+```bash
 curl -X POST http://localhost:8000/v2/models/toxic_classificator/infer \
   -H "Content-Type: application/json" \
-  -d '{
-    "inputs": [
-      {
-        "name": "input_ids",
-        "shape": [1, 10],
-        "datatype": "INT64",
-        "data": [...]
-      }
-    ]
-  }'
+  -d @triton_request.json
 ```
 
 ## Структура проекта
