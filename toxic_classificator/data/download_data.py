@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-import hydra
+from hydra import compose, initialize
 from omegaconf import DictConfig
 
 
@@ -39,9 +39,12 @@ def download_kaggle_dataset(dataset_id: str, output_dir: Path):
         sys.exit(1)
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="config")
-def download_data(cfg: DictConfig):
+def download_data():
     """Download all required datasets"""
+    # Initialize Hydra
+    with initialize(version_base=None, config_path="../../configs"):
+        cfg = compose(config_name="config")
+
     kaggle_json = Path.home() / ".kaggle" / "kaggle.json"
     if not kaggle_json.exists():
         print("Error: Kaggle credentials not found!")
@@ -72,4 +75,3 @@ def download_data(cfg: DictConfig):
 
 if __name__ == "__main__":
     download_data()
-

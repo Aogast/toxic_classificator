@@ -54,3 +54,4 @@ def export_to_onnx(cfg: DictConfig, checkpoint: str, output_path: str = "models/
 if __name__ == "__main__":
     export_to_onnx()
 
+

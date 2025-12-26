@@ -6,8 +6,8 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import hydra
 import pandas as pd
+from hydra import compose, initialize
 from omegaconf import DictConfig
 from sklearn.model_selection import train_test_split
 
@@ -174,10 +174,13 @@ def save_datasets(
         print(f"Saved {len(data)} samples to {output_file}")
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="config")
-def prepare_data(cfg: DictConfig):
+def prepare_data():
     """Main function to prepare all data"""
     print("Starting data preparation...")
+
+    # Initialize Hydra
+    with initialize(version_base=None, config_path="../../configs"):
+        cfg = compose(config_name="config")
 
     project_root = Path.cwd()
 

@@ -6,10 +6,10 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List
 
-import hydra
 import lightning as L
 import mlflow
 import torch
+from hydra import compose, initialize
 from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor, ModelCheckpoint
 from omegaconf import DictConfig, OmegaConf
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
@@ -186,10 +186,14 @@ class ToxicDataModule(L.LightningDataModule):
         )
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="config")
-def train(cfg: DictConfig):
+def train(config_path: str = "configs/config.yaml"):
     """Main training function"""
     print("Starting training...")
+
+    # Initialize Hydra
+    with initialize(version_base=None, config_path="../configs"):
+        cfg = compose(config_name="config")
+
     print(OmegaConf.to_yaml(cfg))
 
     project_root = Path.cwd()
@@ -270,4 +274,3 @@ def train(cfg: DictConfig):
 
 if __name__ == "__main__":
     train()
-
