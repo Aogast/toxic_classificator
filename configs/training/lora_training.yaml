@@ -9,8 +9,8 @@ weight_decay: 0.01
 warmup_ratio: 0.1
 lr_scheduler_type: cosine
 logging_steps: 2
-eval_steps: 1000  # Rare validation (only at end of epoch basically)
-save_steps: 1000
+eval_steps: 150  # Validation every 150 steps
+save_steps: 150
 save_total_limit: 1
 gradient_checkpointing: false  # Disable for speed
 max_grad_norm: 1.0

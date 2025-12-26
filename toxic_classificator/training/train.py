@@ -259,7 +259,8 @@ def train(config_path: str = "configs/config.yaml"):
         save_last=True,
     )
 
-    # Remove early stopping - it needs validation which is slow
+    early_stopping = EarlyStopping(monitor="val_loss", patience=3, mode="min", verbose=True)
+    
     lr_monitor = LearningRateMonitor(logging_interval="step")
 
     trainer = L.Trainer(
@@ -272,7 +273,7 @@ def train(config_path: str = "configs/config.yaml"):
         log_every_n_steps=cfg.training.logging_steps,
         val_check_interval=cfg.training.eval_steps,
         check_val_every_n_epoch=None,
-        callbacks=[checkpoint_callback, lr_monitor],
+        callbacks=[checkpoint_callback, early_stopping, lr_monitor],
         logger=mlf_logger,  # Add MLflow logger here!
         default_root_dir=str(project_root / cfg.paths.logs_dir),
         enable_checkpointing=True,
