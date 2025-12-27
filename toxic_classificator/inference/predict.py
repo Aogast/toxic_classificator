@@ -22,7 +22,7 @@ def parse_response(response: str) -> dict:
             if "labels" not in result:
                 result["labels"] = []
 
-            return result
+    return result
     except json.JSONDecodeError:
         pass
 
@@ -42,7 +42,7 @@ def predict(
     
     if checkpoint:
         adapter_path = checkpoint
-    else:
+            else:
         adapter_path = str(project_root / cfg.training.output_dir / "final")
     
     print(f"Loading base model: {cfg.model.name}")
@@ -65,17 +65,17 @@ def predict(
         input_path = Path(input_file)
         if input_path.suffix == ".json":
             with open(input_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, list):
+            data = json.load(f)
+        if isinstance(data, list):
                     if data and isinstance(data[0], dict):
                         texts = [item.get("text", item.get("comment_text", "")) for item in data]
-                    else:
-                        texts = data
-                else:
-                    texts = [data]
+            else:
+                texts = data
+        else:
+            texts = [data]
         else:
             with open(input_path, "r", encoding="utf-8") as f:
-                texts = [line.strip() for line in f if line.strip()]
+            texts = [line.strip() for line in f if line.strip()]
         print(f"Loaded {len(texts)} texts from {input_file}")
     else:
         print("Error: Provide either --text or --input_file")

@@ -79,10 +79,10 @@ def evaluate(config_path: str = "configs/config.yaml", checkpoint: str = None):
         model_path, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
     )
     model.eval()
-
+    
     y_true = []
     y_pred = []
-
+    
     mlflow.set_tracking_uri(cfg.mlflow.tracking_uri)
     mlflow.set_experiment(cfg.mlflow.experiment_name)
 
@@ -101,17 +101,17 @@ def evaluate(config_path: str = "configs/config.yaml", checkpoint: str = None):
 
             prediction = parse_response(response)
             pred_label = 1 if prediction["toxic"] else 0
-
+        
             y_true.append(sample["toxic"])
-            y_pred.append(pred_label)
-
-        accuracy = accuracy_score(y_true, y_pred)
+        y_pred.append(pred_label)
+    
+    accuracy = accuracy_score(y_true, y_pred)
         precision, recall, f1, support = precision_recall_fscore_support(y_true, y_pred, average="binary")
-
-        cm = confusion_matrix(y_true, y_pred)
+    
+    cm = confusion_matrix(y_true, y_pred)
         report = classification_report(y_true, y_pred, target_names=["Non-toxic", "Toxic"])
-
-        results = {
+    
+    results = {
             "accuracy": accuracy,
             "precision": precision,
             "recall": recall,
@@ -122,18 +122,18 @@ def evaluate(config_path: str = "configs/config.yaml", checkpoint: str = None):
 
         mlflow.log_metrics({"accuracy": accuracy, "precision": precision, "recall": recall, "f1_score": f1})
 
-        print("\n" + "=" * 80)
+    print("\n" + "=" * 80)
         print("Evaluation Results")
-        print("=" * 80)
+    print("=" * 80)
         print(f"\nAccuracy:  {accuracy:.4f}")
         print(f"Precision: {precision:.4f}")
         print(f"Recall:    {recall:.4f}")
         print(f"F1 Score:  {f1:.4f}")
-        print(f"\nConfusion Matrix:")
+    print(f"\nConfusion Matrix:")
         print(f"              Predicted")
         print(f"            Non-toxic  Toxic")
-        print(f"Actual Non-toxic  {cm[0][0]:6d}  {cm[0][1]:6d}")
-        print(f"       Toxic      {cm[1][0]:6d}  {cm[1][1]:6d}")
+    print(f"Actual Non-toxic  {cm[0][0]:6d}  {cm[0][1]:6d}")
+    print(f"       Toxic      {cm[1][0]:6d}  {cm[1][1]:6d}")
         print(f"\n{report}")
 
         results_file = project_root / cfg.paths.plots_dir / "evaluation_results.json"

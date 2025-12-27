@@ -2,9 +2,7 @@
 name = "toxic-classificator"
 version = "0.1.0"
 description = "Toxic comment classification using Qwen2.5-1.5B-Instruct with LoRA fine-tuning"
-authors = [
-    {name = "Сыров Артём Андреевич", email = "syrov@example.com"}
-]
+
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
