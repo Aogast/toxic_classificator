@@ -1,20 +1,15 @@
-# Data configuration
-# For demo (fast): 200 samples
-# For quality: 5000-10000 samples
 max_samples: 5000
 train_split: 0.70
 val_split: 0.15
 test_split: 0.15
 seed: ${seed}
 
-# Datasets from Kaggle
 datasets:
   - name: jigsaw-multilingual
     kaggle_id: c/jigsaw-multilingual-toxic-comment-classification
   - name: russian-toxic
     kaggle_id: blackmoon/russian-language-toxic-comments
 
-# Data processing
 min_text_length: 10
 remove_duplicates: true
 

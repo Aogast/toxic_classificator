@@ -1,6 +1,3 @@
-# Training configuration
-# DEMO MODE: 200 samples, 3 epochs (~20-30 min)
-# QUALITY MODE: 5000 samples, 2-3 epochs (~2-3 hours)
 output_dir: ${paths.models_dir}/finetuned
 num_train_epochs: 2
 per_device_train_batch_size: 4
@@ -18,10 +15,9 @@ gradient_checkpointing: false
 max_grad_norm: 1.0
 seed: ${seed}
 
-# LoRA configuration - minimal for speed
 lora:
-  r: 8  # Reduced from 16
-  lora_alpha: 16  # Reduced from 32
+  r: 8
+  lora_alpha: 16
   target_modules:
     - q_proj
     - v_proj
@@ -30,7 +26,6 @@ lora:
   bias: none
   task_type: CAUSAL_LM
 
-# Precision
 use_bf16: true
 use_fp16: false
 
