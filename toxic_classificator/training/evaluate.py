@@ -106,46 +106,46 @@ def evaluate(config_path: str = "configs/config.yaml", checkpoint: str = None):
         y_pred.append(pred_label)
     
     accuracy = accuracy_score(y_true, y_pred)
-        precision, recall, f1, support = precision_recall_fscore_support(y_true, y_pred, average="binary")
+    precision, recall, f1, support = precision_recall_fscore_support(y_true, y_pred, average="binary")
     
     cm = confusion_matrix(y_true, y_pred)
-        report = classification_report(y_true, y_pred, target_names=["Non-toxic", "Toxic"])
+    report = classification_report(y_true, y_pred, target_names=["Non-toxic", "Toxic"])
     
     results = {
-            "accuracy": accuracy,
-            "precision": precision,
-            "recall": recall,
-            "f1": f1,
-            "confusion_matrix": cm.tolist(),
-            "classification_report": report,
-        }
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "confusion_matrix": cm.tolist(),
+        "classification_report": report,
+    }
 
-        mlflow.log_metrics({"accuracy": accuracy, "precision": precision, "recall": recall, "f1_score": f1})
+    mlflow.log_metrics({"accuracy": accuracy, "precision": precision, "recall": recall, "f1_score": f1})
 
     print("\n" + "=" * 80)
-        print("Evaluation Results")
+    print("Evaluation Results")
     print("=" * 80)
-        print(f"\nAccuracy:  {accuracy:.4f}")
-        print(f"Precision: {precision:.4f}")
-        print(f"Recall:    {recall:.4f}")
-        print(f"F1 Score:  {f1:.4f}")
+    print(f"\nAccuracy:  {accuracy:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall:    {recall:.4f}")
+    print(f"F1 Score:  {f1:.4f}")
     print(f"\nConfusion Matrix:")
-        print(f"              Predicted")
-        print(f"            Non-toxic  Toxic")
+    print(f"              Predicted")
+    print(f"            Non-toxic  Toxic")
     print(f"Actual Non-toxic  {cm[0][0]:6d}  {cm[0][1]:6d}")
     print(f"       Toxic      {cm[1][0]:6d}  {cm[1][1]:6d}")
-        print(f"\n{report}")
+    print(f"\n{report}")
 
-        results_file = project_root / cfg.paths.plots_dir / "evaluation_results.json"
-        results_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(results_file, "w", encoding="utf-8") as f:
-            json.dump(
-                {k: v if not isinstance(v, list) else v for k, v in results.items()}, f, ensure_ascii=False, indent=2
-            )
+    results_file = project_root / cfg.paths.plots_dir / "evaluation_results.json"
+    results_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(results_file, "w", encoding="utf-8") as f:
+        json.dump(
+            {k: v if not isinstance(v, list) else v for k, v in results.items()}, f, ensure_ascii=False, indent=2
+        )
 
-        mlflow.log_artifact(str(results_file))
+    mlflow.log_artifact(str(results_file))
 
-        print(f"\nResults saved to: {results_file}")
+    print(f"\nResults saved to: {results_file}")
 
 
 if __name__ == "__main__":
