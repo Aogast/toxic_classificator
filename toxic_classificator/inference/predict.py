@@ -1,6 +1,3 @@
-"""
-Prediction script
-"""
 import json
 from pathlib import Path
 
@@ -12,7 +9,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def parse_response(response: str) -> dict:
-    """Parse model response"""
     try:
         start_idx = response.find("{")
         end_idx = response.rfind("}") + 1
@@ -38,15 +34,12 @@ def parse_response(response: str) -> dict:
 def predict(
     text: str = None, input_file: str = None, output_file: str = None, config_path: str = "configs/config.yaml", checkpoint: str = None
 ):
-    """Run predictions"""
-    # Initialize Hydra with absolute path
     project_root = Path.cwd()
     config_dir = project_root / "configs"
     
     with initialize_config_dir(version_base=None, config_dir=str(config_dir.absolute())):
         cfg = compose(config_name="config")
     
-    # Determine model path
     if checkpoint:
         adapter_path = checkpoint
     else:
@@ -71,7 +64,6 @@ def predict(
     elif input_file:
         input_path = Path(input_file)
         if input_path.suffix == ".json":
-            # Load JSON file (list of texts or list of dicts with 'text' field)
             with open(input_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
@@ -82,7 +74,6 @@ def predict(
                 else:
                     texts = [data]
         else:
-            # Load text file (one text per line)
             with open(input_path, "r", encoding="utf-8") as f:
                 texts = [line.strip() for line in f if line.strip()]
         print(f"Loaded {len(texts)} texts from {input_file}")
@@ -92,7 +83,6 @@ def predict(
 
     results = []
     for txt in texts:
-        # Use the same prompt format as training
         prompt = f"Human: {txt}\nAssistant:"
         inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=cfg.model.max_length).to(model.device)
 

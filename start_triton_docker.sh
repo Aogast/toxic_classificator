@@ -27,3 +27,4 @@ echo "HTTP endpoint: http://localhost:8000"
 echo "gRPC endpoint: localhost:8001"
 echo "Metrics endpoint: http://localhost:8002/metrics"
 
+

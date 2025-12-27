@@ -1,6 +1,3 @@
-"""
-Download datasets from Kaggle and add to DVC
-"""
 import subprocess
 import sys
 from pathlib import Path
@@ -10,15 +7,7 @@ from omegaconf import DictConfig
 
 
 def download_kaggle_dataset(dataset_id: str, output_dir: Path):
-    """
-    Download a dataset from Kaggle using kaggle CLI
-
-    Args:
-        dataset_id: Kaggle dataset identifier
-        output_dir: Directory to save the downloaded dataset
-    """
     print(f"Downloading {dataset_id}...")
-
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -40,12 +29,9 @@ def download_kaggle_dataset(dataset_id: str, output_dir: Path):
 
 
 def download_data():
-    """Download all required datasets"""
-    # Initialize Hydra
     with initialize(version_base=None, config_path="../../configs"):
         cfg = compose(config_name="config")
 
-    # Check if kaggle CLI is installed
     try:
         subprocess.run(["kaggle", "--version"], capture_output=True, check=True)
     except FileNotFoundError:
@@ -56,7 +42,7 @@ def download_data():
         print("  uv pip install kaggle")
         sys.exit(1)
     except subprocess.CalledProcessError:
-        pass  # Command exists but returned non-zero, that's ok
+        pass
 
     kaggle_json = Path.home() / ".kaggle" / "kaggle.json"
     if not kaggle_json.exists():

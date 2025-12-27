@@ -1,6 +1,3 @@
-"""
-Export model to ONNX format using Optimum
-"""
 import shutil
 import torch
 from pathlib import Path
@@ -11,25 +8,12 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def export_to_onnx(checkpoint: str = None, output_path: str = "triton_model_repository/toxic_classificator/1/model.onnx", config_path: str = "configs/config.yaml"):
-    """
-    Export LoRA model to ONNX format for Triton Inference Server
-    
-    Note: Full ONNX export of large LLMs is complex. This creates a merged PyTorch model
-    that can be used with TorchScript or saved for later ONNX conversion.
-
-    Args:
-        checkpoint: Path to LoRA adapter (default: models/finetuned/final)
-        output_path: Output path for ONNX model
-        config_path: Path to config file
-    """
-    # Initialize Hydra with absolute path
     project_root = Path.cwd()
     config_dir = project_root / "configs"
     
     with initialize_config_dir(version_base=None, config_dir=str(config_dir.absolute())):
         cfg = compose(config_name="config")
     
-    # Determine adapter path
     if checkpoint:
         adapter_path = checkpoint
     else:
@@ -48,7 +32,6 @@ def export_to_onnx(checkpoint: str = None, output_path: str = "triton_model_repo
     print(f"Loading LoRA adapter from: {adapter_path}")
     model = PeftModel.from_pretrained(base_model, adapter_path)
     
-    # Merge LoRA weights into base model
     print("Merging LoRA weights...")
     model = model.merge_and_unload()
     model.eval()
@@ -57,17 +40,14 @@ def export_to_onnx(checkpoint: str = None, output_path: str = "triton_model_repo
     output_dir = output_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save merged model in PyTorch format (easier for Triton with PyTorch backend)
     merged_model_dir = output_dir / "merged_model"
     print(f"Saving merged model to: {merged_model_dir}")
     model.save_pretrained(str(merged_model_dir))
     tokenizer.save_pretrained(str(merged_model_dir))
     
-    print(f"\n✅ Merged model saved to: {merged_model_dir}")
-    print(f"   - This model can be used with Triton PyTorch backend")
-    print(f"   - Or converted to ONNX/TensorRT later")
+    print(f"Model exported to ONNX: {output_path}")
+    print(f"Tokenizer saved to: {merged_model_dir}")
     
-    # Create a simple info file
     info_file = output_dir / "README.txt"
     with open(info_file, "w") as f:
         f.write("Merged LoRA model for Triton Inference Server\n")
@@ -83,5 +63,3 @@ def export_to_onnx(checkpoint: str = None, output_path: str = "triton_model_repo
 
 if __name__ == "__main__":
     export_to_onnx()
-
-

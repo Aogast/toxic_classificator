@@ -1,6 +1,3 @@
-"""
-Evaluation script with metrics logging to MLflow
-"""
 import json
 import subprocess
 from pathlib import Path
@@ -21,13 +18,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def load_test_data(data_path: Path) -> List[Dict]:
-    """Load test data from JSON"""
     with open(data_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def parse_response(response: str) -> Dict:
-    """Parse model response to extract classification"""
     try:
         start_idx = response.find("{")
         end_idx = response.rfind("}") + 1
@@ -54,10 +49,8 @@ def parse_response(response: str) -> Dict:
 
 
 def evaluate(config_path: str = "configs/config.yaml", checkpoint: str = None):
-    """Evaluate model on test data"""
     print("Starting evaluation...")
 
-    # Initialize Hydra with absolute path
     project_root = Path.cwd()
     config_dir = project_root / "configs"
     

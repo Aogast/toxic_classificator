@@ -1,6 +1,3 @@
-"""
-Training script with PyTorch Lightning, Hydra, and MLflow
-"""
 import json
 import os
 import subprocess
@@ -20,14 +17,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, get_linear_schedul
 
 
 def load_data(data_path: Path) -> List[Dict]:
-    """Load training data from JSON"""
     with open(data_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 class ToxicCommentsDataset(Dataset):
-    """Dataset for toxic comments classification"""
-
     def __init__(self, data: List[Dict], tokenizer, max_length: int = 128):
         self.data = data
         self.tokenizer = tokenizer
@@ -61,8 +55,6 @@ class ToxicCommentsDataset(Dataset):
 
 
 class ToxicClassifierModule(L.LightningModule):
-    """Lightning module for toxic comment classification"""
-
     def __init__(self, cfg: DictConfig):
         super().__init__()
         self.cfg = cfg
@@ -70,9 +62,7 @@ class ToxicClassifierModule(L.LightningModule):
         self.setup_model()
 
     def setup_model(self):
-        """Setup model with LoRA and 4-bit quantization"""
         model_name = self.cfg.model.name
-
         print(f"Loading model: {model_name}")
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
@@ -80,7 +70,6 @@ class ToxicClassifierModule(L.LightningModule):
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # Create BitsAndBytesConfig for 4-bit quantization
         from transformers import BitsAndBytesConfig
         
         bnb_config = BitsAndBytesConfig(
@@ -100,7 +89,6 @@ class ToxicClassifierModule(L.LightningModule):
 
         self.model = prepare_model_for_kbit_training(self.model)
 
-        # Convert Hydra ListConfig to regular list for JSON serialization
         target_modules = list(self.cfg.training.lora.target_modules)
         
         lora_config = LoraConfig(
@@ -123,25 +111,21 @@ class ToxicClassifierModule(L.LightningModule):
         )
 
     def forward(self, input_ids, attention_mask, labels=None):
-        """Forward pass"""
         return self.model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
 
     def training_step(self, batch, batch_idx):
-        """Training step"""
         outputs = self(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"], labels=batch["labels"])
         loss = outputs.loss
         self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        """Validation step"""
         outputs = self(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"], labels=batch["labels"])
         loss = outputs.loss
         self.log("val_loss", loss, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
         return loss
 
     def configure_optimizers(self):
-        """Configure optimizers and schedulers"""
         optimizer = torch.optim.AdamW(
             self.parameters(), lr=self.cfg.training.learning_rate, weight_decay=self.cfg.training.weight_decay
         )
@@ -157,8 +141,6 @@ class ToxicClassifierModule(L.LightningModule):
 
 
 class ToxicDataModule(L.LightningDataModule):
-    """Lightning data module for toxic comments"""
-
     def __init__(self, train_data: List[Dict], val_data: List[Dict], tokenizer, cfg: DictConfig):
         super().__init__()
         self.train_data = train_data
@@ -167,7 +149,6 @@ class ToxicDataModule(L.LightningDataModule):
         self.cfg = cfg
 
     def setup(self, stage=None):
-        """Setup datasets"""
         if stage == "fit" or stage is None:
             self.train_dataset = ToxicCommentsDataset(
                 self.train_data, self.tokenizer, self.cfg.model.max_length
@@ -175,7 +156,6 @@ class ToxicDataModule(L.LightningDataModule):
             self.val_dataset = ToxicCommentsDataset(self.val_data, self.tokenizer, self.cfg.model.max_length)
 
     def train_dataloader(self):
-        """Training dataloader"""
         return DataLoader(
             self.train_dataset,
             batch_size=self.cfg.training.per_device_train_batch_size,
@@ -185,7 +165,6 @@ class ToxicDataModule(L.LightningDataModule):
         )
 
     def val_dataloader(self):
-        """Validation dataloader"""
         return DataLoader(
             self.val_dataset,
             batch_size=self.cfg.training.per_device_eval_batch_size,
@@ -196,10 +175,8 @@ class ToxicDataModule(L.LightningDataModule):
 
 
 def train(config_path: str = "configs/config.yaml"):
-    """Main training function"""
     print("Starting training...")
 
-    # Initialize Hydra with absolute path to configs
     project_root = Path.cwd()
     config_dir = project_root / "configs"
     
@@ -230,21 +207,18 @@ def train(config_path: str = "configs/config.yaml"):
     mlflow.set_tracking_uri(cfg.mlflow.tracking_uri)
     mlflow.set_experiment(cfg.mlflow.experiment_name)
 
-    # Create MLflow logger for Lightning
     mlf_logger = MLFlowLogger(
         experiment_name=cfg.mlflow.experiment_name,
         tracking_uri=cfg.mlflow.tracking_uri,
         run_name=cfg.mlflow.run_name,
     )
 
-    # Log git commit
     try:
         git_commit = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
         mlf_logger.log_hyperparams({"git_commit": git_commit})
     except Exception:
         pass
 
-    # Log all config as hyperparams
     mlf_logger.log_hyperparams(OmegaConf.to_container(cfg, resolve=True))
 
     model = ToxicClassifierModule(cfg)
@@ -277,7 +251,7 @@ def train(config_path: str = "configs/config.yaml"):
         val_check_interval=cfg.training.eval_steps,
         check_val_every_n_epoch=None,
         callbacks=[checkpoint_callback, early_stopping, lr_monitor],
-        logger=mlf_logger,  # Add MLflow logger here!
+        logger=mlf_logger,
         default_root_dir=str(project_root / cfg.paths.logs_dir),
         enable_checkpointing=True,
         enable_progress_bar=True,
@@ -291,7 +265,6 @@ def train(config_path: str = "configs/config.yaml"):
     model.model.save_pretrained(str(final_dir))
     model.tokenizer.save_pretrained(str(final_dir))
 
-    # Log final model as artifact
     mlf_logger.experiment.log_artifact(mlf_logger.run_id, str(final_dir))
 
     print("Training completed successfully!")

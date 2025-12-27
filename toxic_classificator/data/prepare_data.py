@@ -1,6 +1,3 @@
-"""
-Prepare and preprocess data for training
-"""
 import json
 import subprocess
 from pathlib import Path
@@ -13,7 +10,6 @@ from sklearn.model_selection import train_test_split
 
 
 def load_jigsaw_data(data_dir: Path) -> pd.DataFrame:
-    """Load and process Jigsaw Multilingual dataset"""
     print("Loading Jigsaw Multilingual dataset...")
 
     possible_files = ["jigsaw-toxic-comment-train.csv", "train.csv", "jigsaw_train.csv"]
@@ -50,7 +46,6 @@ def load_jigsaw_data(data_dir: Path) -> pd.DataFrame:
 
 
 def load_russian_toxic_data(data_dir: Path) -> pd.DataFrame:
-    """Load and process Russian Language Toxic Comments dataset"""
     print("Loading Russian Toxic Comments dataset...")
 
     possible_files = ["labeled.csv", "russian_toxic_comments.csv", "train.csv"]
@@ -78,7 +73,6 @@ def load_russian_toxic_data(data_dir: Path) -> pd.DataFrame:
 
 
 def combine_datasets(cfg: DictConfig) -> pd.DataFrame:
-    """Combine all datasets"""
     project_root = Path.cwd()
     raw_data_dir = project_root / cfg.paths.raw_data_dir
 
@@ -107,7 +101,6 @@ def combine_datasets(cfg: DictConfig) -> pd.DataFrame:
 
 
 def format_training_example(text: str, toxic: bool, labels: List[str]) -> str:
-    """Format a complete training example for causal LM"""
     response = {"toxic": toxic, "labels": labels if labels else []}
     response_json = json.dumps(response, ensure_ascii=False)
 
@@ -121,7 +114,6 @@ def format_training_example(text: str, toxic: bool, labels: List[str]) -> str:
 
 
 def prepare_splits(df: pd.DataFrame, cfg: DictConfig) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Split data into train, validation, and test sets"""
     train_split = cfg.data.train_split
     val_split = cfg.data.val_split
     test_split = cfg.data.test_split
@@ -147,7 +139,6 @@ def prepare_splits(df: pd.DataFrame, cfg: DictConfig) -> Tuple[pd.DataFrame, pd.
 def save_datasets(
     train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.DataFrame, output_dir: Path
 ):
-    """Save processed datasets"""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for split_name, df in [("train", train_df), ("val", val_df), ("test", test_df)]:
@@ -175,10 +166,8 @@ def save_datasets(
 
 
 def prepare_data():
-    """Main function to prepare all data"""
     print("Starting data preparation...")
 
-    # Initialize Hydra
     with initialize(version_base=None, config_path="../../configs"):
         cfg = compose(config_name="config")
 
